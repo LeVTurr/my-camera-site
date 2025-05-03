@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Доступ к камере</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin: 20px;
+        }
+        #cameraView {
+            width: 100%;
+            max-width: 400px;
+            margin: 20px auto;
+            border: 2px solid #333;
+            display: none;
+        }
+        button {
+            padding: 10px 20px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        #error {
+            color: red;
+            margin: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Доступ к камере</h1>
+    <p>Этот сайт запрашивает доступ к вашей камере для демонстрации работы.</p>
+    
+    <button id="startCamera">Включить камеру</button>
+    <button id="takePhoto" disabled>Сделать фото</button>
+    
+    <video id="cameraView" autoplay playsinline></video>
+    <canvas id="photoCanvas" style="display:none;"></canvas>
+    
+    <div id="error"></div>
+    
+    <script>
+        const startButton = document.getElementById('startCamera');
+        const takePhotoButton = document.getElementById('takePhoto');
+        const cameraView = document.getElementById('cameraView');
+        const photoCanvas = document.getElementById('photoCanvas');
+        const errorElement = document.getElementById('error');
+        
+        let stream = null;
+        
+        // Запрос доступа к камере
+        startButton.addEventListener('click', async () => {
+            try {
+                // Запрашиваем доступ к камере
+                stream = await navigator.mediaDevices.getUserMedia({
+                    video: { 
+                        facingMode: 'environment', // Используем заднюю камеру
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 }
+                    },
+                    audio: false
+                });
+                
+                // Показываем видео с камеры
+                cameraView.srcObject = stream;
+                cameraView.style.display = 'block';
+                
+                // Активируем кнопку для фото
+                takePhotoButton.disabled = false;
+                startButton.disabled = true;
+                
+                errorElement.textContent = '';
+            } catch (err) {
+                errorElement.textContent = `Ошибка: ${err.message}`;
+                console.error('Ошибка доступа к камере:', err);
+            }
+        });
+        
+        // Сделать фото
+        takePhotoButton.addEventListener('click', () => {
+            if (!stream) return;
+            
+            // Устанавливаем размеры canvas как у видео
+            photoCanvas.width = cameraView.videoWidth;
+            photoCanvas.height = cameraView.videoHeight;
+            
+            // Рисуем текущий кадр видео на canvas
+            const context = photoCanvas.getContext('2d');
+            context.drawImage(cameraView, 0, 0, photoCanvas.width, photoCanvas.height);
+            
+            // Можно сохранить фото или отправить на сервер
+            const imageDataUrl = photoCanvas.toDataURL('image/jpeg');
+            
+            // Здесь можно сделать что-то с фото, например показать или отправить
+            alert('Фото сделано! Данные сохранены.');
+            
+            // Остановить камеру после фото (опционально)
+            stopCamera();
+        });
+        
+        // Функция остановки камеры
+        function stopCamera() {
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+                cameraView.srcObject = null;
+                cameraView.style.display = 'none';
+                takePhotoButton.disabled = true;
+                startButton.disabled = false;
+                stream = null;
+            }
+        }
+        
+        // Остановить камеру при закрытии страницы
+        window.addEventListener('beforeunload', stopCamera);
+    </script>
+</body>
+</html>
